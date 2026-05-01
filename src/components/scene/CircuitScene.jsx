@@ -92,7 +92,7 @@ export default function CircuitScene({ circuit }) {
       )}
 
       {layers.currentFlow && (
-        <CurrentParticles wires={layout.wires} />
+        <CurrentParticles wires={layout.wires} components={layout.components} />
       )}
 
       {layers.metalTarget && (

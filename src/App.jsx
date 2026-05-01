@@ -4,16 +4,22 @@ import SceneCanvas from './components/scene/SceneCanvas.jsx';
 import ComponentInspector from './components/ui/ComponentInspector.jsx';
 import { useCircuitStore } from './store/circuitStore.js';
 
+const EXAMPLES = [
+  { file: 'lc-oscillator.asc', label: 'LC Oscillator (series RLC, 455 kHz)' },
+  { file: 'lc-tank.asc',       label: 'LC Tank (parallel, 159 kHz)' },
+  { file: 'rc-filter.asc',     label: 'RC Filter (1 kHz)' },
+];
+
 function LandingOverlay() {
   const loadCircuit = useCircuitStore((s) => s.loadCircuit);
 
-  const loadExample = async () => {
+  const loadExample = async (example) => {
     try {
-      const res = await fetch('/example-circuits/lc-oscillator.asc');
+      const res = await fetch(`/example-circuits/${example.file}`);
       const text = await res.text();
-      loadCircuit(text, 'lc-oscillator.asc');
+      loadCircuit(text, example.file);
     } catch {
-      // file may not exist in dev
+      /* not available in this environment */
     }
   };
 
@@ -70,31 +76,36 @@ function LandingOverlay() {
             fontFamily: 'Inter, system-ui, sans-serif',
             fontSize: 13,
             color: '#6060a0',
-            margin: '0 0 20px',
+            margin: '0 0 16px',
           }}
         >
-          Drop an LTspice .asc file in the sidebar to begin
+          Drop an LTspice .asc file in the sidebar — or try a built-in example:
         </p>
-        <button
-          onClick={loadExample}
-          style={{
-            background: 'rgba(0,212,255,0.12)',
-            border: '1px solid rgba(0,212,255,0.4)',
-            borderRadius: 8,
-            color: '#00d4ff',
-            fontFamily: 'Space Mono, monospace',
-            fontSize: 12,
-            letterSpacing: '0.1em',
-            padding: '10px 20px',
-            cursor: 'pointer',
-            textTransform: 'uppercase',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) => { e.target.style.background = 'rgba(0,212,255,0.22)'; }}
-          onMouseLeave={(e) => { e.target.style.background = 'rgba(0,212,255,0.12)'; }}
-        >
-          Try example circuit
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex.file}
+              onClick={() => loadExample(ex)}
+              style={{
+                background: 'rgba(0,212,255,0.08)',
+                border: '1px solid rgba(0,212,255,0.3)',
+                borderRadius: 8,
+                color: '#00d4ff',
+                fontFamily: 'Space Mono, monospace',
+                fontSize: 11,
+                letterSpacing: '0.06em',
+                padding: '9px 16px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,212,255,0.18)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,212,255,0.08)'; }}
+            >
+              {ex.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -4,11 +4,15 @@ import * as THREE from 'three';
 import { useCircuitStore } from '../../store/circuitStore.js';
 import { buildParticleData } from '../../physics/currentFlow.js';
 
-export default function CurrentParticles({ wires }) {
+export default function CurrentParticles({ wires, components }) {
   const sourceMode = useCircuitStore((s) => s.sourceMode);
   const animationSpeed = useCircuitStore((s) => s.animationSpeed);
 
-  const { particles, totalCount } = useMemo(() => buildParticleData(wires), [wires]);
+  const { particles, totalCount } = useMemo(
+    () => buildParticleData(wires, components),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [wires, components],
+  );
 
   const mainRef = useRef();
   const glowRef = useRef();
