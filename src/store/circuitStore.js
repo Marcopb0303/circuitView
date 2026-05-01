@@ -21,6 +21,7 @@ export const useCircuitStore = create((set) => ({
   overrides: {},
   selectedComponent: null,
   cameraTarget: null,
+  isMetalDragging: false,
   metalTargetPosition: { x: 0, y: 0, z: 0 },
   animationSpeed: 1,
 
@@ -89,6 +90,7 @@ export const useCircuitStore = create((set) => ({
   setMetalTargetPosition: (metalTargetPosition) => set({ metalTargetPosition }),
   selectComponent: (selectedComponent) => set({ selectedComponent }),
   setCameraTarget: (cameraTarget) => set({ cameraTarget }),
+  setMetalDragging: (isMetalDragging) => set({ isMetalDragging }),
   setOverride: (componentId, param, value) =>
     set((state) => ({
       overrides: {

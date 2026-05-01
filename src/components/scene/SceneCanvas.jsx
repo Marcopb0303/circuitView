@@ -18,6 +18,7 @@ function LightMarker() {
 
 function CameraController() {
   const cameraTarget = useCircuitStore((s) => s.cameraTarget);
+  const isMetalDragging = useCircuitStore((s) => s.isMetalDragging);
   const controlsRef = useRef();
   const targetVec = useRef(new THREE.Vector3(0.85, 0, 0));
 
@@ -33,10 +34,12 @@ function CameraController() {
   return (
     <OrbitControls
       ref={controlsRef}
+      enabled={!isMetalDragging}
       enableDamping
       dampingFactor={0.08}
       minDistance={1.5}
       maxDistance={16}
+      screenSpacePanning={true}
       makeDefault
     />
   );

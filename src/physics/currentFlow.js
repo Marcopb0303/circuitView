@@ -2,11 +2,9 @@ import * as THREE from 'three';
 
 const PARTICLES_PER_WIRE = 10;
 
-// Snap world position to a key with 0.05-unit resolution so nearby endpoints
-// (wire tip ↔ component pin) are treated as the same node.
-const SNAP = 0.05;
+// Use exact ASC integer coordinates as node keys — no floating-point snap tolerance needed.
 function nodeKey(p) {
-  return `${Math.round(p.x / SNAP)},${Math.round(p.y / SNAP)},${Math.round(p.z / SNAP)}`;
+  return `${p.x},${p.y}`;
 }
 
 // BFS from the voltage source's + terminal through the wire graph.
@@ -14,10 +12,9 @@ function nodeKey(p) {
 //   +1  → particle travels from wire.fromWorld toward wire.toWorld
 //   -1  → particle travels from wire.toWorld toward wire.fromWorld
 //
-// This guarantees KCL: at every intermediate node the wires that arrive
-// are opposite in direction to the wires that leave.
+// Adjacency is built from wire.from / wire.to (ASC integer coords) so
+// every endpoint matches exactly — no SNAP tolerance required.
 function assignWireDirections(wires, components) {
-  // Build adjacency: each endpoint key → list of { wireId, otherKey, thisEnd:'from'|'to' }
   const adj = new Map();
   const addEdge = (key, entry) => {
     if (!adj.has(key)) adj.set(key, []);
@@ -25,33 +22,34 @@ function assignWireDirections(wires, components) {
   };
 
   for (const wire of wires) {
-    const fk = nodeKey(wire.fromWorld);
-    const tk = nodeKey(wire.toWorld);
+    const fk = nodeKey(wire.from);
+    const tk = nodeKey(wire.to);
     addEdge(fk, { wireId: wire.id, otherKey: tk, thisEnd: 'from' });
     addEdge(tk, { wireId: wire.id, otherKey: fk, thisEnd: 'to' });
   }
 
-  // Find the start node: closest wire endpoint to the voltage source + pin
+  // Start BFS from the voltage/current source's pin[0] (+ terminal).
   const source = components?.find((c) => c.type === 'voltage' || c.type === 'current');
-  const srcPin = source?.pins?.[0]?.worldPosition; // pin[0] is the + terminal
+  const srcPinPos = source?.pins?.[0]?.position; // ASC integer {x, y}
 
   let startKey = null;
-  if (srcPin) {
-    let best = Infinity;
-    for (const [k] of adj) {
-      const parts = k.split(',').map(Number);
-      const dx = parts[0] * SNAP - srcPin.x;
-      const dz = parts[2] * SNAP - srcPin.z;
-      const d = dx * dx + dz * dz;
-      if (d < best) { best = d; startKey = k; }
+  if (srcPinPos) {
+    startKey = nodeKey(srcPinPos);
+    // If the exact pin position isn't a wire endpoint, find the closest one.
+    if (!adj.has(startKey)) {
+      let best = Infinity;
+      for (const [k] of adj) {
+        const [kx, ky] = k.split(',').map(Number);
+        const d = (kx - srcPinPos.x) ** 2 + (ky - srcPinPos.y) ** 2;
+        if (d < best) { best = d; startKey = k; }
+      }
     }
   }
-  // Fallback: first wire's from-end
   if (!startKey && wires.length > 0) {
-    startKey = nodeKey(wires[0].fromWorld);
+    startKey = nodeKey(wires[0].from);
   }
 
-  const directions = new Map(); // wireId → +1 or -1
+  const directions = new Map();
   const visited = new Set();
   const queue = [startKey];
   visited.add(startKey);
@@ -60,9 +58,6 @@ function assignWireDirections(wires, components) {
     const cur = queue.shift();
     for (const { wireId, otherKey, thisEnd } of (adj.get(cur) ?? [])) {
       if (directions.has(wireId)) continue;
-      // Arrived at this wire via `thisEnd`.
-      // If we entered at 'from', current goes from→to (+1).
-      // If we entered at 'to', current goes to→from (-1).
       directions.set(wireId, thisEnd === 'from' ? 1 : -1);
       if (!visited.has(otherKey)) {
         visited.add(otherKey);
@@ -71,7 +66,6 @@ function assignWireDirections(wires, components) {
     }
   }
 
-  // Assign default direction for any wires not reached by the BFS
   for (const wire of wires) {
     if (!directions.has(wire.id)) directions.set(wire.id, 1);
   }
@@ -79,7 +73,6 @@ function assignWireDirections(wires, components) {
   return directions;
 }
 
-// Build particle data from laid-out wires with KCL-consistent directions.
 export function buildParticleData(wires, components) {
   const directions = assignWireDirections(wires, components);
   const particles = [];
